@@ -8,8 +8,7 @@ from PIL import Image
 from omegaconf import OmegaConf
 
 from networks.s_zss_dm import S_ZSS_DM
-
-
+import cv2
 
 class LDM_Diffusion(pl.LightningModule):
     def __init__(self, cfg, wandb_id=""):
@@ -143,7 +142,7 @@ class LDM_Diffusion(pl.LightningModule):
                 # set to validation
                 self._model.eval()
 
-                if self._cfg.style_sampling.name == "nearby":
+                if self._cfg.style_sampling.name == "nearby" or self._cfg.style_sampling.name == "augmented":
                     style_0 = (torch.from_numpy(np.array(Image.open(test_style_path + "/0_img.png"))[:,:,:3]).to(torch.float32).to(self.device).unsqueeze(0).unsqueeze(0) / 127.5)-1
                     style_1 = (torch.from_numpy(np.array(Image.open(test_style_path + "/1_img.png"))[:,:,:3]).to(torch.float32).to(self.device).unsqueeze(0).unsqueeze(0) / 127.5)-1
                     style_2 = (torch.from_numpy(np.array(Image.open(test_style_path + "/2_img.png"))[:,:,:3]).to(torch.float32).to(self.device).unsqueeze(0).unsqueeze(0) / 127.5)-1

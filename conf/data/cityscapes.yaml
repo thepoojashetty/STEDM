@@ -1,0 +1,37 @@
+name: cityscapes
+
+class_train_samples: 20
+
+samples: 10000
+
+unanno_keep_ratio: 0.3
+
+num_classes: 2
+classes: ["background", "car"]
+
+num_val_inst: 1020
+num_test_inst: 6149
+
+batch_base: 2
+batch_size: null
+
+patch_size: 512
+overlap_train: 1
+overlap_val: 1
+
+reload_data: false
+
+eval_subtypes: False
+eval_key: cityscapes_anno
+test_folder: test_img_diff/cityscapes
+
+train_clear_images_path: leftImg8bit_trainvaltest/leftImg8bit
+train_foggy_images_path: leftImg8bit_trainvaltest_foggy/leftImg8bit_foggy
+train_rainy_images_path: leftImg8bit_trainval_rain/leftImg8bit_rain
+label_path: gtFine_trainvaltest/gtFine
+
+defaults:
+  - dataset:
+    - cityscapes_anno
+
+ratios: [1.0]

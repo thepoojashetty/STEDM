@@ -1,0 +1,4 @@
+cityscapes_unanno:
+  name: cityscapes_unanno
+  file: data.cityscapes.cityscapes_dm.Cityscapes_DM_UnAnno
+  zip_name: cityscapes

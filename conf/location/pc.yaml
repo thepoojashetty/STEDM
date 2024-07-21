@@ -6,5 +6,5 @@ backend: gloo
 compile: disable
 
 n_workers: 4
-data_dir: /your/data/dir
-result_dir: /your/result/dir
+data_dir: /Users/poojashetty/Documents/MasterThesis/Dataset
+result_dir: /Users/poojashetty/Documents/MasterThesis/Results/Semantic_Subtype_Diffusion
