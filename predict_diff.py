@@ -39,11 +39,11 @@ def main(cfg : DictConfig):
     if hasattr(cfg, "ckpt_name"):
         ckpt_name = cfg.ckpt_name
     else:
-        ckpt_name = f"Diff_{cfg.data.name}_{cfg.data.class_train_samples}_{cfg.style_sampling.name}_last.ckpt"
+        return
     ckpt_path = cfg.location.result_dir + "/checkpoints/" + ckpt_name
 
     # delete pretrained ckpt path
-    del cfg.diffusion.ckpt_path
+    # del cfg.diffusion.ckpt_path
     # load module
     module = LDM_Diffusion.load_from_checkpoint(ckpt_path, cfg=cfg, map_location=torch.device("cpu"), strict=False)
 

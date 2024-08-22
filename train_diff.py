@@ -33,16 +33,24 @@ from pytorch_lightning.strategies.ddp import DDPStrategy
 
 @hydra.main(version_base=None, config_path="conf", config_name="config_diff")
 def main(cfg : DictConfig):
+    #Check if you have GPU
+    acceleratoor = "gpu" if torch.cuda.is_available() else "cpu"
     # calculate batch_size
     cfg.data.batch_size = int(cfg.data.batch_base * cfg.location.batch_mul)
     # calculate learning rate
     cfg.lr = cfg.base_lr * cfg.data.batch_size * cfg.location.n_gpus
 
-    run_name = cfg.run_name if hasattr(cfg, "run_name") else f"Diff_{cfg.data.name}_{cfg.data.class_train_samples}_{cfg.style_sampling.name}"
+    run_name = cfg.run_name if hasattr(cfg, "run_name") else f"Diff_{cfg.data.name}_{cfg.style_sampling.name}_ssl"
     logger = pl_loggers.WandbLogger(project="Semantic Style Diffusion", name=run_name)
 
     data_module = DataModule(cfg)
-    module = LDM_Diffusion(cfg)
+
+    if hasattr(cfg, "ckpt_name"):
+        ckpt_name = cfg.ckpt_name
+        ckpt_path = cfg.location.result_dir + "/checkpoints/" + ckpt_name
+        module = LDM_Diffusion.load_from_checkpoint(ckpt_path, cfg=cfg)
+    else:
+        module = LDM_Diffusion(cfg)
 
     # set float point precision
     torch.set_float32_matmul_precision('high')
@@ -71,7 +79,7 @@ def main(cfg : DictConfig):
 
     trainer = pl.Trainer(max_epochs=cfg.num_epochs,
                          callbacks=callbacks, logger=logger,
-                         accelerator='gpu', devices=cfg.location.n_gpus,
+                         accelerator=acceleratoor, devices=cfg.location.n_gpus,
                          strategy=DDPStrategy(find_unused_parameters=False, process_group_backend=cfg.location.backend, timeout=timedelta(seconds=7200*4)),
                          accumulate_grad_batches=4, num_sanity_val_steps=0, limit_val_batches=0)
 

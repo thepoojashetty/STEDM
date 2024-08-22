@@ -6,8 +6,6 @@ from networks.agg_blocks import Agg_None, Agg_Linear, Agg_Max, Agg_Mean
 from networks.vit_set import sViT
 
 
-
-
 class S_ZSS_DM(LatentDiffusion):
     def __init__(self, encoder, sampling_cfg, agg_cfg, cfg, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -47,12 +45,12 @@ class S_ZSS_DM(LatentDiffusion):
         outputs = LatentDiffusion.get_input(self, batch, k, bs=bs, **kwargs)
         self.cond_stage_trainable = False
 
-        z, c = outputs[0], outputs[1]
-        c = self.get_learned_conditioning(c)
+        z, c = outputs[0], outputs[1] #z=[bs,3,128,128], c=[bs,2,512,512]
+        c = self.get_learned_conditioning(c) #c=[bs,3,128,128]
 
         style_imgs = batch[self.embed_key][:bs]
 
-        style_features = self._agg_block(style_imgs)
+        style_features = self._agg_block(style_imgs) # [bs, 512]
 
         all_conds = {"c_concat": [c], "c_crossattn": [style_features]}
         noutputs = [z, all_conds]

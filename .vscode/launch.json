@@ -1,0 +1,81 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Train_Diff_Flowers",
+            "type": "python",
+            "request": "launch",
+            "program": "train_diff.py",
+            "console": "integratedTerminal",
+            "args": [
+                "location=pc",
+                "location.n_workers=8",
+                "data=flowers",
+                "data.samples=1",
+                "data.batch_base=1",
+                "data/dataset=[flowers_anno]",
+                "data.ratios=[1.0]",
+                "style_sampling=augmented",
+                "style_agg=mean",
+                "data.batch_base=1"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Train_Diff_Cityscapes",
+            "type": "python",
+            "request": "launch",
+            "program": "train_diff.py",
+            "console": "integratedTerminal",
+            "args": [
+                "location=pc",
+                "location.n_workers=4",
+                "data=cityscapes",
+                "data.samples=1",
+                "data.batch_base=1",
+                "data/dataset=[cityscapes_anno]",
+                "data.ratios=[1.0]",
+                "style_sampling=augmented",
+                "style_agg=mean",
+                "data.batch_base=1"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Train_Diff_Uncond_SSL",
+            "type": "python",
+            "request": "launch",
+            "program": "train_diff.py",
+            "console": "integratedTerminal",
+            "args": [
+                "location=pc",
+                "location.n_workers=4",
+                "data=cityscapes",
+                "data.samples=1",
+                "data.batch_base=1",
+                "data/dataset=[cityscapes_ssl]",
+                "style_sampling=augmented",
+                "style_agg=mean"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Train_SimCLR_Cityscapes",
+            "type": "python",
+            "request": "launch",
+            "program": "train_simCLR.py",
+            "console": "integratedTerminal",
+            "args": [
+                "location=pc",
+                "location.n_workers=4",
+                "data=cityscapes",
+                "data.samples=4",
+                "batch_size=2",
+                "data/dataset=[cityscapes_simclr]",
+                "style_sampling=augmented",
+                "style_agg=mean"
+            ],
+            "justMyCode": false
+        }
+    ]
+}

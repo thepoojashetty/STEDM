@@ -65,7 +65,7 @@ class DataModule(pl.LightningDataModule):
                 val_datasets.append(dataset)
         
         comb_val_dataset = ConcatDataset(val_datasets)
-        return DataLoader(comb_val_dataset, batch_size=self._batch_size, num_workers=self._n_workers, pin_memory=True, prefetch_factor=2, shuffle=True, persistent_workers=True)
+        return DataLoader(comb_val_dataset, batch_size=self._batch_size, num_workers=self._n_workers, pin_memory=True, prefetch_factor=2, shuffle=False, persistent_workers=True)
 
 
     def test_dataloader(self):

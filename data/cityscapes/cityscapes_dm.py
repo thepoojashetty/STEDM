@@ -5,17 +5,20 @@ import shutil
 import scipy.io
 
 import albumentations as A
+from torchvision import transforms
+
 import pytorch_lightning as pl
 
 from pathlib import Path
 from torch.utils.data import DataLoader
 from albumentations.pytorch.transforms import ToTensorV2
 
-from data.cityscapes.cityscapes_ds import Cityscapes_DS,Cityscapes_DS_Predict
+from data.cityscapes.cityscapes_ds import Cityscapes_DS,Cityscapes_DS_Predict,Cityscapes_DS_SSL, Cityscapes_DS_SimCLR
 
 from ldm.util import get_obj_from_str
 from sklearn.model_selection import train_test_split
 import zipfile
+import random
 
 class Cityscapes_DM_Anno(pl.LightningDataModule):
     def __init__(self, cfg, ds_cfg, ratio, **kwargs):
@@ -49,6 +52,7 @@ class Cityscapes_DM_Anno(pl.LightningDataModule):
             # shutil.make_archive(zip_file[:-4], 'zip', base_dir)
             selected_folders = [ os.path.join(base_dir,self._cfg.data.train_clear_images_path,"train"), 
                                  os.path.join(base_dir,self._cfg.data.train_foggy_images_path,"train"),
+                                 os.path.join(base_dir,self._cfg.data.train_rainy_images_path,"train"),
                                  os.path.join(base_dir,self._cfg.data.label_path,"train")
                             ]
             self.create_zip_of_selected_folders(base_dir,selected_folders, zip_file)
@@ -101,12 +105,12 @@ class Cityscapes_DM_Anno(pl.LightningDataModule):
         # self._list_unanno = self.get_sample_path_list(base_dir + "/imgs", base_dir + "/segs", "unanno", ".jpg")
 
         # setup augments
-        base_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size), A.HorizontalFlip(), A.VerticalFlip(),
+        base_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size),
                                       A.ToFloat(max_value=255), ToTensorV2()])
 
         val_test_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size), A.ToFloat(max_value=255), ToTensorV2()])
 
-        style_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size), A.HorizontalFlip(), A.VerticalFlip(),
+        style_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size),A.HorizontalFlip(), A.VerticalFlip(),
                              A.Affine(scale=(0.8, 1.2), translate_percent=0.1, rotate=(-360,360), shear=(-20,20), mode=cv2.BORDER_REFLECT, p=1.0),
                              A.ToFloat(max_value=255), ToTensorV2()])
 
@@ -124,7 +128,7 @@ class Cityscapes_DM_Anno(pl.LightningDataModule):
         self._ds_train= Cityscapes_DS(self._list_train, self._samples, self._num_classes, base_transforms, style_sampler, style_drop_rate,self._ds_cfg)
         # self._ds_val = Cityscapes_DS_ValTest(self._list_val, self._num_classes, val_test_transforms, style_sampler, self._ds_cfg)
         # self._ds_test = Cityscapes_DS_ValTest(self._list_test, self._num_classes, val_test_transforms, style_sampler, self._ds_cfg)
-        self._ds_predict = Cityscapes_DS_Predict(self._list_train, self._samples, self._num_classes, base_transforms, style_sampler_pred, 0.0)
+        self._ds_predict = Cityscapes_DS_Predict(self._list_train, self._samples, self._num_classes, base_transforms, style_sampler_pred, 0.0,self._ds_cfg)
     
     #returns a list of tuples with the image and segmentation paths
     def get_sample_path_list(self,image_dir_path,seg_dir_path,split,suffix=".png"):
@@ -148,7 +152,7 @@ class Cityscapes_DM_Anno(pl.LightningDataModule):
         return self._ds_train
   
     def val_dataloader(self):
-        return DataLoader(self._ds_val, batch_size=self._batch_size, num_workers=self._n_workers, pin_memory=True, prefetch_factor=2, shuffle=True, persistent_workers=True)
+        return DataLoader(self._ds_val, batch_size=self._batch_size, num_workers=self._n_workers, pin_memory=True, prefetch_factor=2, shuffle=False, persistent_workers=True)
     
     def val_dataset(self):
         return self._ds_val
@@ -166,6 +170,7 @@ class Cityscapes_DM_Anno(pl.LightningDataModule):
         return self._ds_predict
 
 
+# used during inference
 class Cityscapes_DM_UnAnno(Cityscapes_DM_Anno):
         def setup(self, stage):
             if self._location == "pc":
@@ -182,7 +187,7 @@ class Cityscapes_DM_UnAnno(Cityscapes_DM_Anno):
             self._list_data = self.get_sample_path_list(os.path.join(base_dir,self._cfg.data.train_clear_images_path), os.path.join(base_dir,self._cfg.data.label_path), "train", ".png")
             
             # setup augments
-            base_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size), A.HorizontalFlip(), A.VerticalFlip(),
+            base_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size),
                                         A.ToFloat(max_value=255), ToTensorV2()])
 
             style_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size), A.HorizontalFlip(), A.VerticalFlip(),
@@ -200,7 +205,7 @@ class Cityscapes_DM_UnAnno(Cityscapes_DM_Anno):
             self._ds_train = []
             self._ds_val = []
             self._ds_test = []
-            self._ds_predict = Cityscapes_DS(self._list_unanno, self._samples, self._num_classes, base_transforms, style_sampler_pred, 0.0)
+            self._ds_predict = Cityscapes_DS(self._list_unanno, self._samples, self._num_classes, base_transforms, style_sampler_pred, 0.0,self._ds_cfg)
 
         def get_unanno_path_list(self,unanno_list,base_dir):
             unanno_new_list = []
@@ -208,6 +213,121 @@ class Cityscapes_DM_UnAnno(Cityscapes_DM_Anno):
                 image_name = image_path.split("/")[-1]
                 unanno_image_name = "_".join(image_name.split("_")[:3]) + "_leftImg8bit_foggy_beta_0.01.png"
                 city_name = image_path.split("/")[-2]
-                unanno_image_path = os.path.join(base_dir,self._cfg.data.train_foggy_images_path,city_name,unanno_image_name)
+                unanno_image_path = os.path.join(base_dir,self._cfg.data.train_foggy_images_path,"train",city_name,unanno_image_name)
+                unanno_new_list.append((unanno_image_path,label_path))
+            return unanno_new_list
+
+#used for unconditional(no layout) diffusion training
+class Cityscapes_DM_UnAnno_SSL(Cityscapes_DM_Anno):
+        def setup(self, stage):
+            if self._location == "pc":
+                base_dir = self._data_dir + "/" + self._zip_name
+            else:
+                base_dir = os.path.join('/scratch', os.environ['SLURM_JOB_ID']) + "/" + self._zip_name
+
+            # split images category wise
+            self._list_train = []
+            self._list_unanno = []
+
+            self._list_data = self.get_sample_path_list(os.path.join(base_dir,self._cfg.data.train_clear_images_path), os.path.join(base_dir,self._cfg.data.label_path), "train", ".png")
+            
+            # setup augments
+            base_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size),
+                                        A.ToFloat(max_value=255), ToTensorV2()])
+
+            style_transforms = A.Compose([A.Resize(self._patch_size, self._patch_size), A.HorizontalFlip(), A.VerticalFlip(),
+                                A.Affine(scale=(0.8, 1.2), translate_percent=0.1, rotate=(-360,360), shear=(-20,20), mode=cv2.BORDER_REFLECT),
+                                A.ToFloat(max_value=255), ToTensorV2()])
+
+            # setup style sampler class
+            style_sampler_class = get_obj_from_str("data.flowers.style_sampler." + self._cfg.style_sampling.class_name)
+            style_sampler = style_sampler_class(self._cfg.style_sampling, style_transforms)
+            style_sampler_pred = style_sampler_class(self._cfg.style_sampling, style_transforms)
+
+            self._list_train, self._list_train_2 = train_test_split(self._list_data, test_size=self._cfg.data.foggy_keep_ratio, random_state=42)
+            self._list_foggy = self.get_foggy_path_list(self._list_train_2,base_dir)
+            self._list_rainy = self.get_rainy_path_list(os.path.join(base_dir,self._cfg.data.train_rainy_images_path), os.path.join(base_dir,self._cfg.data.label_path), len(self._list_train),"train", ".png")
+
+            self._list_train = self._list_train + self._list_foggy + self._list_rainy
+
+            # get style drop rate
+            style_drop_rate = self._cfg.style_drop_rate if hasattr(self._cfg, "style_drop_rate") else 0.0
+
+            # create datasets
+            self._ds_train = Cityscapes_DS_SSL(self._list_train, self._samples, self._num_classes, base_transforms, style_sampler, style_drop_rate,self._ds_cfg)
+            self._ds_val = []
+            self._ds_test = []
+            self._ds_predict = []
+
+        def get_rainy_path_list(self,image_dir_path,seg_dir_path,size,split,suffix=".png"):
+            rainy_pathlist = self.get_sample_path_list(image_dir_path,seg_dir_path,split,suffix)
+            if size > len(rainy_pathlist):
+                return rainy_pathlist
+            else:
+                #randomly sample size elements from the list
+                return random.sample(rainy_pathlist, size)
+        
+        def get_foggy_path_list(self,clear_path_list,base_dir):
+            unanno_new_list = []
+            for image_path,label_path in clear_path_list:
+                image_name = image_path.split("/")[-1]
+                unanno_image_name = "_".join(image_name.split("_")[:3]) + "_leftImg8bit_foggy_beta_0.01.png"
+                city_name = image_path.split("/")[-2]
+                unanno_image_path = os.path.join(base_dir,self._cfg.data.train_foggy_images_path,"train",city_name,unanno_image_name)
+                unanno_new_list.append((unanno_image_path,label_path))
+            return unanno_new_list
+        
+#
+class Cityscapes_DM_SimCLR(Cityscapes_DM_Anno):
+        def setup(self, stage):
+            if self._location == "pc":
+                base_dir = self._data_dir + "/" + self._zip_name
+            else:
+                base_dir = os.path.join('/scratch', os.environ['SLURM_JOB_ID']) + "/" + self._zip_name
+
+            # split images category wise
+            self._list_train = []
+            self._list_val = []
+
+            self._list_data = self.get_sample_path_list(os.path.join(base_dir,self._cfg.data.train_clear_images_path), os.path.join(base_dir,self._cfg.data.label_path), "train", ".png")
+            
+            # setup augments
+            base_transforms = transforms.Compose([transforms.ToTensor(), #convert to tensor and normalize to [0,1]
+                                                    transforms.Normalize((0.5,), (0.5,)), # normalize to [-1,1]
+                                                    transforms.Resize((self._patch_size, self._patch_size)),
+                                                    transforms.RandomHorizontalFlip(),
+                                                    transforms.RandomResizedCrop(size=self._patch_size), #randomly crop and resize to 512
+                                                    
+                                        ])
+
+            self._list_train, self._list_train_2 = train_test_split(self._list_data, test_size=self._cfg.data.foggy_keep_ratio, random_state=42)
+            self._list_foggy = self.get_foggy_path_list(self._list_train_2,base_dir)
+            self._list_rainy = self.get_rainy_path_list(os.path.join(base_dir,self._cfg.data.train_rainy_images_path), os.path.join(base_dir,self._cfg.data.label_path), len(self._list_train),"train", ".png")
+
+            self._list_train = self._list_train + self._list_foggy + self._list_rainy
+
+            self._list_train, self._list_val = train_test_split(self._list_train, test_size=self._cfg.data.val_keep_ratio, random_state=42)
+
+            # create datasets
+            self._ds_train = Cityscapes_DS_SimCLR(self._list_train, self._samples, base_transforms,self._ds_cfg)
+            self._ds_val = Cityscapes_DS_SimCLR(self._list_val, self._samples, base_transforms,self._ds_cfg)
+            self._ds_test = []
+            self._ds_predict = []
+
+        def get_rainy_path_list(self,image_dir_path,seg_dir_path,size,split,suffix=".png"):
+            rainy_pathlist = self.get_sample_path_list(image_dir_path,seg_dir_path,split,suffix)
+            if size > len(rainy_pathlist):
+                return rainy_pathlist
+            else:
+                #randomly sample size elements from the list
+                return random.sample(rainy_pathlist, size)
+        
+        def get_foggy_path_list(self,clear_path_list,base_dir):
+            unanno_new_list = []
+            for image_path,label_path in clear_path_list:
+                image_name = image_path.split("/")[-1]
+                unanno_image_name = "_".join(image_name.split("_")[:3]) + "_leftImg8bit_foggy_beta_0.01.png"
+                city_name = image_path.split("/")[-2]
+                unanno_image_path = os.path.join(base_dir,self._cfg.data.train_foggy_images_path,"train",city_name,unanno_image_name)
                 unanno_new_list.append((unanno_image_path,label_path))
             return unanno_new_list

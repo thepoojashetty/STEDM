@@ -19,9 +19,6 @@ class LDM_Diffusion(pl.LightningModule):
         # learning parameters
         self._lr = cfg.lr
 
-        # save all parameters
-        self.save_hyperparameters()
-
         # to restore the wandb run
         self._wandb_id = wandb_id
 
@@ -41,6 +38,9 @@ class LDM_Diffusion(pl.LightningModule):
 
         # loss accumulation
         self._train_loss = torchmetrics.MeanMetric()
+
+        # save all parameters
+        self.save_hyperparameters()
 
 
     def forward(self, x, *args, **kwargs):
@@ -124,16 +124,21 @@ class LDM_Diffusion(pl.LightningModule):
             self.hparams["wandb_id"] = self._wandb_id
 
         # create example images
-        if hasattr(self._cfg.data, "test_folder"):         
+        if hasattr(self._cfg.data, "test_folder"):
             # test image folder path
             test_folder_path = self._cfg.location.data_dir + "/" + self._cfg.data.test_folder
 
             # load test condition image
-            test_img = np.array(Image.open(test_folder_path + "/test_c.png").convert('L'))
-            test_img = (test_img > 0).astype(np.uint8)
+            # test_img = np.array(Image.open(test_folder_path + "/test_c.png").convert('L'))
+            # test_img = (test_img > 0).astype(np.uint8)
+            test_img = np.array(Image.open(test_folder_path + "/test_c2.png").convert('L'))
+            test_img = (test_img == 26).astype(np.uint8)
             out_ch = 2
 
             c = F.one_hot(torch.from_numpy(test_img).to(self.device).to(torch.long), num_classes=out_ch).unsqueeze(0).to(torch.float32)
+
+            #only for unconditional ssl
+            # c= torch.zeros_like(c)
 
             # load style images
             test_style_path = test_folder_path + "/" + self._cfg.style_sampling.name
@@ -228,6 +233,9 @@ class LDM_Diffusion(pl.LightningModule):
             params.append(self.model.logvar)
         if hasattr(self.model, "embedder"):
             params = params + list(self.model.embedder.parameters())
+
+        #for debugging
+        # params = list(self.model.model.named_parameters()) 
 
         optimizer = torch.optim.AdamW(params, lr=self._lr)
         return optimizer

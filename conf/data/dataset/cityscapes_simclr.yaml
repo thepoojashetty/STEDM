@@ -1,0 +1,5 @@
+cityscapes_simclr:
+  name: cityscapes_simclr
+  file: data.cityscapes.cityscapes_dm.Cityscapes_DM_SimCLR
+  zip_name: cityscapes
+  n_views: 2

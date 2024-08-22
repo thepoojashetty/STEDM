@@ -1,8 +1,6 @@
 import torch
 from einops import rearrange
 
-
-
 class Agg_Linear(torch.nn.Module):
     def __init__(self, sampling_cfg, embedder):
         super().__init__()
