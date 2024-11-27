@@ -1,0 +1,15 @@
+name: gt450
+
+data:
+  patch_size: 512
+  batch_size: 8
+  level: 0
+  patches_per_slide: 12
+  mean: 0.90,0.83,0.87
+  std: 0.03,0.05,0.04
+  file_extension: svs
+
+training:
+  scanner: gt450
+  seed: 42
+  lr: 1e-4

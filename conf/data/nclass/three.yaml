@@ -1,0 +1,22 @@
+#for 3 class segmenattion: Tumour, Tissue and Background (Additionally an excluded class is added)
+name: three
+
+label_dict: {'Bg': 0, 
+            'Bone': 1,
+            'Cartilage': 1, 
+            'Dermis': 1, 
+            'Epidermis': 1, 
+            'Subcutis': 1, 
+            'Inflamm/Necrosis': 1,
+            'Melanoma': 2, 
+            'Plasmacytoma': 2,
+            'Mast Cell Tumor': 2, 
+            'PNST': 2, 
+            'SCC': 2, 
+            'Trichoblastoma': 2, 
+            'Histiocytoma': 2
+            }
+
+excluded: 3
+
+classes_to_include: [0,1,2]

@@ -18,7 +18,8 @@ import numpy as np
 
 #cityscapes
 images = [
-    "/Users/poojashetty/Documents/MasterThesis/Dataset/cityscapes/gtFine_trainvaltest/gtFine/val/frankfurt/frankfurt_000000_003025_gtFine_labelIds.png"
+    "/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/test_5.png"
+    # "/Users/poojashetty/Documents/MasterThesis/Dataset/cityscapes/gtFine_trainvaltest/gtFine/val/frankfurt/frankfurt_000000_003025_gtFine_labelIds.png"
     # "/Users/poojashetty/Documents/MasterThesis/Dataset/cityscapes/gtFine_trainvaltest/gtFine/train/bremen/bremen_000005_000019_gtFine_labelIds.png"
     # "/Users/poojashetty/Documents/MasterThesis/Dataset/cityscapes/leftImg8bit_trainvaltest/leftImg8bit/val/lindau/lindau_000002_000019_leftImg8bit.png",
     # "/Users/poojashetty/Documents/MasterThesis/Dataset/cityscapes/leftImg8bit_trainvaltest/leftImg8bit/val/munster/munster_000065_000019_leftImg8bit.png",
@@ -27,7 +28,7 @@ images = [
 ]
 
 final_images = [
-    "/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/test_c2_2class.png"
+    "/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/test_5.png"
     # "/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/test_c2.png"
     # "/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/augmented/0_img.png",
     # "/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/augmented/1_img.png",
@@ -38,6 +39,14 @@ final_images = [
 for i in range(len(images)):
     img = cv2.imread(images[i])
     img = cv2.resize(img, (512, 512), interpolation=cv2.INTER_NEAREST)
-    img[img==26]=255
-    img[img!=255]=0
+    # img[img==26]=255
+    # img[img!=255]=0
     cv2.imwrite(final_images[i], img)
+
+#create an empty image
+# img = np.zeros((512, 512, 3), np.uint8)
+# cv2.imwrite("/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/test_3.png", img)
+
+#create an image with all 255
+# img = np.ones((512, 512, 3), np.uint8)*26
+# cv2.imwrite("/Users/poojashetty/Documents/MasterThesis/Dataset/test_img_diff/cityscapes/test_4.png", img)

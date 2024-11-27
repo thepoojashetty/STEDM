@@ -132,3 +132,6 @@ dmypy.json
 wandb/
 settings.py
 outputs/
+
+lightning_logs/
+src/

@@ -8,6 +8,11 @@ ddim_steps: 128
 eta: 0.0
 cfg_scale: 1.5
 
+encoder: swin_v2_t
+training_type: predict
+
+fm: false
+
 defaults:
   - _self_
   - data: flowers

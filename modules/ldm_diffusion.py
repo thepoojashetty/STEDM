@@ -3,12 +3,15 @@ import torchmetrics
 import numpy as np
 import torch.nn.functional as F
 import pytorch_lightning as pl
+from pathlib import Path
 
 from PIL import Image
 from omegaconf import OmegaConf
 
 from networks.s_zss_dm import S_ZSS_DM
 import cv2
+import os
+from einops import rearrange
 
 class LDM_Diffusion(pl.LightningModule):
     def __init__(self, cfg, wandb_id=""):
@@ -31,7 +34,12 @@ class LDM_Diffusion(pl.LightningModule):
             ldm_conf.ckpt_path = cfg.location.result_dir + "/" + ldm_conf.ckpt_path
 
         ldm_dict = OmegaConf.to_container(ldm_conf)
-        self._model = S_ZSS_DM(encoder="swin_v2_t", sampling_cfg=cfg.style_sampling, agg_cfg=cfg.style_agg, cfg=cfg, **ldm_dict)
+
+        encoder_ckpt_path = None
+        if hasattr(cfg, "encoder_ckpt"):
+            encoder_ckpt_path = cfg.location.result_dir + "/checkpoints/" + self._cfg.encoder_ckpt
+
+        self._model = S_ZSS_DM(encoder=self._cfg.encoder, sampling_cfg=cfg.style_sampling, agg_cfg=cfg.style_agg, cfg=cfg, encoder_ckpt=encoder_ckpt_path, **ldm_dict)
 
         # register ldm
         self.register_module("model", self._model)
@@ -58,7 +66,6 @@ class LDM_Diffusion(pl.LightningModule):
         ldm_batch = {"image": img, "segmentation": seg_oh, "style_imgs":style}
         return ldm_batch
 
-
     def training_step(self, batch, batch_idx):
         # prepare batch for ldm
         ldm_batch = self.prepare_batch(batch)
@@ -77,33 +84,71 @@ class LDM_Diffusion(pl.LightningModule):
 
         z, c_0 = self._model.get_input(ldm_batch, "image")
 
-        if (self._cfg.cfg_scale == 1) or (self._cfg.style_sampling.name == "none"):
-            out_imgs, _ = self._model.sample_log(c_0, batch_size=len(z), ddim=True, ddim_steps=self._cfg.ddim_steps, eta=self._cfg.eta, log_every_t=1000)
-            torch.cuda.empty_cache()
-        else:
-            # get uncond conditioning
+        out_imgs = None
+        bs = batch[0].shape[0]
+        # print("Batch size:", bs,end="\n")
+        if self._cfg.fm :
             ldm_batch_uncond = {"image": torch.zeros_like(ldm_batch["image"]), "segmentation": ldm_batch["segmentation"], "style_imgs":torch.zeros_like(ldm_batch["style_imgs"])-2}
             z, c_uncond = self._model.get_input(ldm_batch_uncond, "image")
+            
+            style_images = ldm_batch["style_imgs"]
+            style_features = self._model._agg_block(style_images)
 
+            cosine_sim = torch.zeros(bs, 5)
+            gen_images = torch.zeros(bs, 5, 3, 512, 512)
+
+            for itr in range(5):
             # sample new images
-            out_imgs, _ = self._model.sample_log(c_0, batch_size=len(z), ddim=True, ddim_steps=self._cfg.ddim_steps, eta=self._cfg.eta, log_every_t=1000, unconditional_conditioning=c_uncond, unconditional_guidance_scale=self._cfg.cfg_scale)
+                out_imgs, _ = self._model.sample_log(c_0, batch_size=len(z), ddim=True, ddim_steps=self._cfg.ddim_steps, eta=self._cfg.eta, log_every_t=1000, unconditional_conditioning=c_uncond, unconditional_guidance_scale=self._cfg.cfg_scale)
+                torch.cuda.empty_cache()
+                out_imgs = torch.clip(self._model.decode_first_stage(out_imgs), -1, 1)
+                torch.cuda.empty_cache()
+
+                out_features = self._model._agg_block._embedder(out_imgs)
+                #compute cosine similarity
+                cos_sim= F.cosine_similarity(out_features, style_features, dim=1)
+
+                cosine_sim[:, itr] = cos_sim
+                gen_images[:, itr] = out_imgs
+
+            #get the best image
+            max_indices = torch.argmax(cosine_sim, dim=1)
+            out_imgs = gen_images[torch.arange(bs), max_indices]
+
+        else:
+            if (self._cfg.cfg_scale == 1) or (self._cfg.style_sampling.name == "none"):
+                out_imgs, _ = self._model.sample_log(c_0, batch_size=len(z), ddim=True, ddim_steps=self._cfg.ddim_steps, eta=self._cfg.eta, log_every_t=1000)
+                torch.cuda.empty_cache()
+            else:
+                # get uncond conditioning
+                ldm_batch_uncond = {"image": torch.zeros_like(ldm_batch["image"]), "segmentation": ldm_batch["segmentation"], "style_imgs":torch.zeros_like(ldm_batch["style_imgs"])-2}
+                z, c_uncond = self._model.get_input(ldm_batch_uncond, "image")
+
+                # sample new images
+                out_imgs, _ = self._model.sample_log(c_0, batch_size=len(z), ddim=True, ddim_steps=self._cfg.ddim_steps, eta=self._cfg.eta, log_every_t=1000, unconditional_conditioning=c_uncond, unconditional_guidance_scale=self._cfg.cfg_scale)
+                torch.cuda.empty_cache()
+
+            out_imgs = torch.clip(self._model.decode_first_stage(out_imgs), -1, 1)
             torch.cuda.empty_cache()
 
         # prepare images for saving
-        out_imgs = torch.clip(self._model.decode_first_stage(out_imgs), -1, 1)
-        torch.cuda.empty_cache()
         out_imgs = ((out_imgs.permute(0,2,3,1).cpu().numpy() + 1) * 127.5).astype(np.uint8)
 
+        #mkdir images and segs
+        Path(os.path.join(self.predict_dir,"imgs")).mkdir(parents=True, exist_ok=True)
+        Path(os.path.join(self.predict_dir,"segs")).mkdir(parents=True, exist_ok=True)
+        
+        img_out_path = os.path.join(self.predict_dir,"imgs")
+        seg_out_path = os.path.join(self.predict_dir,"segs")
         # save images
-        for img, seg, num in zip(out_imgs, torch.argmax(ldm_batch["segmentation"], dim=-1).cpu().numpy().astype(np.uint8), batch[4].cpu().numpy()):
-            out_path = self.predict_dir
 
+        for img, seg, num in zip(out_imgs, torch.argmax(ldm_batch["segmentation"], dim=-1).cpu().numpy().astype(np.uint8), batch[4].cpu().numpy()):
             # pad number to 5 digits
             num_str = str(num).zfill(5)
 
             # save img and seg
-            Image.fromarray(img).save(out_path + f"/img_{num_str}.png")
-            Image.fromarray(seg).save(out_path + f"/seg_{num_str}.png")
+            Image.fromarray(img).save(img_out_path + f"/img_{num_str}_0000.png")
+            Image.fromarray(seg).save(seg_out_path + f"/img_{num_str}.png")
 
 
     def on_train_batch_start(self, batch, batch_idx):
@@ -131,14 +176,17 @@ class LDM_Diffusion(pl.LightningModule):
             # load test condition image
             # test_img = np.array(Image.open(test_folder_path + "/test_c.png").convert('L'))
             # test_img = (test_img > 0).astype(np.uint8)
-            test_img = np.array(Image.open(test_folder_path + "/test_c2.png").convert('L'))
-            test_img = (test_img == 26).astype(np.uint8)
+            test_img = np.array(Image.open(test_folder_path + "/test_c.png").convert('L'))
+            if self._cfg.data.name == "cityscapes":
+                test_img = (test_img == 26).astype(np.uint8)
+            
             out_ch = 2
 
             c = F.one_hot(torch.from_numpy(test_img).to(self.device).to(torch.long), num_classes=out_ch).unsqueeze(0).to(torch.float32)
 
             #only for unconditional ssl
-            # c= torch.zeros_like(c)
+            if self._cfg.training_type == "ssl":
+                c= torch.zeros_like(c)
 
             # load style images
             test_style_path = test_folder_path + "/" + self._cfg.style_sampling.name
@@ -232,10 +280,14 @@ class LDM_Diffusion(pl.LightningModule):
         if self.model.learn_logvar:
             params.append(self.model.logvar)
         if hasattr(self.model, "embedder"):
-            params = params + list(self.model.embedder.parameters())
+            if self._cfg.training_type != "finetune":
+                params = params + list(self.model.embedder.parameters())
+        if hasattr(self.model, "linear_block"):
+            if self._cfg.training_type != "finetune":
+                params = params + list(self.model.linear_block.parameters())
 
         #for debugging
-        # params = list(self.model.model.named_parameters()) 
-
+        # params = list(self.model.model.named_parameters())
+        # params = list(self.model.parameters())
         optimizer = torch.optim.AdamW(params, lr=self._lr)
         return optimizer

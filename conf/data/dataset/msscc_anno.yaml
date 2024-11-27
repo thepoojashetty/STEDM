@@ -1,0 +1,4 @@
+msscc_anno:
+  name: msscc_anno
+  file: data.msscc.msscc_dm.MSSCC_DM_Anno
+  zip_name: msscc

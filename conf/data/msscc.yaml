@@ -1,0 +1,25 @@
+name: msscc
+
+samples: 10000
+
+batch_base: 2
+batch_size: null
+
+patch_size: 512
+level: 0
+patches_per_slide: 50
+down_factor: 16
+
+reload_data: false
+
+test_folder: test_img_diff/msscc
+
+defaults:
+  - dataset:
+    - msscc_anno
+  - scanner:
+    - p1000
+  - nclass:
+    - two_with_ignore
+
+ratios: [1.0]

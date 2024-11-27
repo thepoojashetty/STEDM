@@ -47,7 +47,7 @@ def main(cfg : DictConfig):
 
     trainer = pl.Trainer(max_epochs=cfg.num_epochs,
                          callbacks=callbacks, logger=logger,
-                         accelerator=acceleratoor, devices=cfg.location.n_gpus,
+                         accelerator=acceleratoor, devices=-1,
                          strategy=DDPStrategy(find_unused_parameters=False, process_group_backend=cfg.location.backend, timeout=timedelta(seconds=7200*4))
                          )
 

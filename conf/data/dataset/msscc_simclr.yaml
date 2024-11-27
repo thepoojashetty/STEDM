@@ -1,0 +1,5 @@
+msscc_simclr:
+  name: msscc_simclr
+  file: data.msscc.msscc_dm.MSSCC_DM_SimCLR
+  zip_name: msscc
+  n_views: 2

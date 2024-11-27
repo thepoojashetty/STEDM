@@ -7,4 +7,10 @@ compile: disable
 
 n_workers: 4
 data_dir: /Users/poojashetty/Documents/MasterThesis/Dataset
+zip_dir: /Users/poojashetty/Documents/MasterThesis/Dataset
 result_dir: /Users/poojashetty/Documents/MasterThesis/Results/Semantic_Subtype_Diffusion
+
+msscc: 
+  data_dir: /Users/poojashetty/Documents/MasterThesis/Dataset/MS-SCC
+  annotation_file: "scc-full-res.json"
+  data_split_csv_path: /Users/poojashetty/Documents/MasterThesis/Code/STEDM/data/msscc/scc_dataset.csv

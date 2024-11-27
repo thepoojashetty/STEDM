@@ -21,13 +21,19 @@ class SimCLR(pl.LightningModule):
 
         assert self._temperature > 0.0, 'The temperature must be a positive float!'
         # Base model f(.)
-        self.convnet = torchvision.models.resnet18(num_classes=2*self._hidden_dim)  # Output of last linear layer
+        self.convnet = nn.Sequential(*list(torchvision.models.resnet18(pretrained=True).children())[:-1])  # Remove final FC layer
         # The MLP for g(.) consists of Linear->ReLU->Linear
-        self.convnet.fc = nn.Sequential(
-            self.convnet.fc,  # Linear(ResNet output, 4*hidden_dim)
+        self.projection = nn.Sequential(
+            nn.Flatten(),
+            nn.Linear(512, 2*self._hidden_dim),
             nn.ReLU(inplace=True),
             nn.Linear(2*self._hidden_dim, self._hidden_dim)
         )
+
+    def forward(self, x):
+        emb=self.convnet(x)
+        emb = emb.view(emb.size(0), -1)
+        return emb
 
     def configure_optimizers(self):
         optimizer = optim.AdamW(self.parameters(),
@@ -38,12 +44,15 @@ class SimCLR(pl.LightningModule):
                                                             eta_min=self._lr/50)
         return [optimizer], [lr_scheduler]
 
+    #NXent loss
     def info_nce_loss(self, batch, mode='train'):
         imgs = batch
         imgs = torch.cat(imgs)
 
         # Encode all images
-        feats = self.convnet(imgs)
+        feats_f = self.convnet(imgs)
+        # Project features
+        feats = self.projection(feats_f)
         # Calculate cosine similarity
         cos_sim = F.cosine_similarity(feats[:,None,:], feats[None,:,:], dim=-1)
         # Mask out cosine similarity to itself

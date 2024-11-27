@@ -1,0 +1,15 @@
+name: nz210
+
+data:
+  patch_size: 512
+  batch_size: 8
+  level: 0
+  patches_per_slide: 12
+  mean: 0.86,0.70,0.78
+  std: 0.03,0.07,0.04
+  file_extension: ndpi
+
+training:
+  scanner: nz210
+  seed: 42
+  lr: 1e-4

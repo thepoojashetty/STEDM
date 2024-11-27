@@ -19,8 +19,6 @@ from data.catch.catch_ds import CATCH_DS_Anno, CATCH_DS_Predict, CATCH_DS_Ordere
 from ldm.util import get_obj_from_str
 
 
-
-
 class CATCH_DM_Anno(pl.LightningDataModule):
     def __init__(self, cfg, ds_cfg, ratio, **kwargs):
         super().__init__()

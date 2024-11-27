@@ -1,0 +1,23 @@
+#for 2 class segmenattion: Tumour and non Tumour
+name: two_with_ignore
+num_classes: 2
+
+label_dict: {'Bg': 0, 
+            'Bone': 0,
+            'Cartilage': 0, 
+            'Dermis': 0, 
+            'Epidermis': 0, 
+            'Subcutis': 0, 
+            'Inflamm/Necrosis': 0,
+            'Melanoma': 1, 
+            'Plasmacytoma': 1,
+            'Mast Cell Tumor': 1, 
+            'PNST': 1, 
+            'SCC': 1, 
+            'Trichoblastoma': 1,
+            'Histiocytoma': 1
+            }
+
+excluded: 2
+
+classes_to_include: [1]

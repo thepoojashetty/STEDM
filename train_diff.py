@@ -34,7 +34,7 @@ from pytorch_lightning.strategies.ddp import DDPStrategy
 @hydra.main(version_base=None, config_path="conf", config_name="config_diff")
 def main(cfg : DictConfig):
     #Check if you have GPU
-    acceleratoor = "gpu" if torch.cuda.is_available() else "cpu"
+    accelerator = "gpu" if torch.cuda.is_available() else "cpu"
     # calculate batch_size
     cfg.data.batch_size = int(cfg.data.batch_base * cfg.location.batch_mul)
     # calculate learning rate
@@ -79,7 +79,7 @@ def main(cfg : DictConfig):
 
     trainer = pl.Trainer(max_epochs=cfg.num_epochs,
                          callbacks=callbacks, logger=logger,
-                         accelerator=acceleratoor, devices=cfg.location.n_gpus,
+                         accelerator=accelerator, devices=-1,
                          strategy=DDPStrategy(find_unused_parameters=False, process_group_backend=cfg.location.backend, timeout=timedelta(seconds=7200*4)),
                          accumulate_grad_batches=4, num_sanity_val_steps=0, limit_val_batches=0)
 

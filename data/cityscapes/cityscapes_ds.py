@@ -89,7 +89,7 @@ class Cityscapes_DS_ValTest(torch.utils.data.Dataset):
         for cls in self._ds_cfg.void_classes:
             seg[seg == cls] = self._background_class_value
         for cls in self._ds_cfg.valid_classes:
-            seg[seg == cls] = self._class_map[cls]
+            seg[seg == cls] = 1
 
         seg = seg.astype(np.uint8)
 
@@ -188,7 +188,7 @@ class Cityscapes_DS_SimCLR(torch.utils.data.Dataset):
         # load image,  we are only interested in the image not the segmentation mask
         img_raw = np.array(Image.open(img_tup[0]))
 
-        images = [self._base_transforms(img_raw) for _ in range(self._ds_cfg.n_views)]
+        images = [self._base_transforms(image=img_raw)["image"] for _ in range(self._ds_cfg.n_views)]
 
         return images
 

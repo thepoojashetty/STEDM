@@ -7,6 +7,10 @@ base_lr: 1e-7
 
 style_drop_rate: 0.2
 
+encoder: swin_v2_t
+
+training_type: full #ssl (with unc or simclr)or finetune- 
+
 defaults:
   - _self_
   - data: flowers

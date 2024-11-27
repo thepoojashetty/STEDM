@@ -2,12 +2,6 @@ name: cityscapes
 
 samples: 10000
 
-#during normal training
-unanno_keep_ratio: 0.3
-
-#during SSL
-foggy_keep_ratio: 0.5
-
 #simCLR
 val_keep_ratio: 0.1
 
@@ -40,3 +34,7 @@ defaults:
     - cityscapes_anno
 
 ratios: [1.0]
+
+anno_cities: ["aachen","darmstadt","hamburg","krefeld","stuttgart","ulm","zurich"] #clear images
+unanno_cities: ["weimar","bochum","bremen","cologne","dusseldorf","erfurt","hanover","jena"] #foggy and rainy images
+val_cities: ["tubingen","strasbourg","monchengladbach"] #used specially for segmentation

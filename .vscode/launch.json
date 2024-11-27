@@ -42,6 +42,27 @@
             "justMyCode": false
         },
         {
+            "name": "Train_Diff_MSSCC",
+            "type": "python",
+            "request": "launch",
+            "program": "train_diff.py",
+            "console": "integratedTerminal",
+            "args": [
+                "location=pc",
+                "location.n_workers=4",
+                "data=msscc",
+                "data.samples=1",
+                "data.batch_base=1",
+                "data/dataset=[msscc_anno]",
+                "data.ratios=[1.0]",
+                "style_sampling=nearby",
+                "style_agg=mean",
+                "data.batch_base=1",
+                "data/nclass=two_with_ignore"
+            ],
+            "justMyCode": false
+        },
+        {
             "name": "Train_Diff_Uncond_SSL",
             "type": "python",
             "request": "launch",
@@ -74,6 +95,28 @@
                 "data/dataset=[cityscapes_simclr]",
                 "style_sampling=augmented",
                 "style_agg=mean"
+            ],
+            "justMyCode": false
+        },
+        {
+            "name": "Predict_cityscapes",
+            "type": "python",
+            "request": "launch",
+            "program": "predict_diff.py",
+            "console": "integratedTerminal",
+            "args": [
+                "location=pc",
+                "location.n_workers=4",
+                "data=cityscapes",
+                "data.samples=4",
+                "data/dataset=[cityscapes_anno,cityscapes_unanno]",
+                "style_sampling=augmented",
+                "data.ratios=[1.0,1.0]",
+                "style_agg=mean",
+                "cfg_scale=1.5",
+                "+ckpt_name=Diff_Uncdiff_Augmented_Mean_Cityscapes_finetune_last.ckpt",
+                "+predict_dir=Predict_Diff_Uncdiff_Augmented_Mean_Cityscapes_finetune",
+                "fm=true"
             ],
             "justMyCode": false
         }

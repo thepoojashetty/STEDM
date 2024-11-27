@@ -4,24 +4,36 @@ import torchvision
 from ldm.models.diffusion.ddpm import LatentDiffusion
 from networks.agg_blocks import Agg_None, Agg_Linear, Agg_Max, Agg_Mean
 from networks.vit_set import sViT
+from ssl_training.simCLR import SimCLR
 
 
 class S_ZSS_DM(LatentDiffusion):
-    def __init__(self, encoder, sampling_cfg, agg_cfg, cfg, *args, **kwargs):
+    def __init__(self, encoder, sampling_cfg, agg_cfg, cfg, encoder_ckpt=None,*args, **kwargs):
         super().__init__(*args, **kwargs)
         self._sampling_cfg = sampling_cfg
         self._agg_cfg = agg_cfg
         self._cfg = cfg
 
         self.embed_key = "style_imgs"
-        embedder = torchvision.models.get_model(encoder)
-        embedder.head = torch.nn.Linear(768, 512)
+        if encoder == "simclr":
+            embedder = SimCLR.load_from_checkpoint(encoder_ckpt)
+        else:
+            embedder = torchvision.models.get_model(encoder)
+            embedder.head = torch.nn.Linear(768, 512)
+
+        #for ssl training freeze the embedder
+        if self._cfg.training_type == "finetune":
+            for param in embedder.parameters():
+                param.requires_grad = False
 
         if self._sampling_cfg.name == "none":
             self._agg_block = Agg_None(self._sampling_cfg, embedder)
         else:
             if self._agg_cfg.name == "linear":
                 self._agg_block = Agg_Linear(self._sampling_cfg, embedder)
+                if self._cfg.training_type == "finetune":
+                    for param in self._agg_block._linear_block.parameters():
+                        param.requires_grad = False
             elif self._agg_cfg.name == "max":
                 self._agg_block = Agg_Max(self._sampling_cfg, embedder)
             elif self._agg_cfg.name == "mean":

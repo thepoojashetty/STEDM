@@ -1,0 +1,15 @@
+name: cs2
+
+data:
+  patch_size: 512
+  batch_size: 8
+  level: 0
+  patches_per_slide: 12
+  mean: 0.80,0.62,0.69
+  std: 0.04,0.09,0.08
+  file_extension: svs
+
+training:
+  scanner: cs2
+  seed: 42
+  lr: 1e-4

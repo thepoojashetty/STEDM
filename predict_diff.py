@@ -43,7 +43,7 @@ def main(cfg : DictConfig):
     ckpt_path = cfg.location.result_dir + "/checkpoints/" + ckpt_name
 
     # delete pretrained ckpt path
-    # del cfg.diffusion.ckpt_path
+    del cfg.diffusion.ckpt_path
     # load module
     module = LDM_Diffusion.load_from_checkpoint(ckpt_path, cfg=cfg, map_location=torch.device("cpu"), strict=False)
 
@@ -59,7 +59,7 @@ def main(cfg : DictConfig):
     module.predict_dir = predict_dir
 
     # double the number of created images
-    cfg.data.samples = 2 * cfg.data.samples
+    # cfg.data.samples = 2 * cfg.data.samples
 
     # create data module
     data_module = DataModule(cfg)
@@ -82,9 +82,9 @@ def main(cfg : DictConfig):
     callbacks = [progress_bar] # more callbacks can be added
 
     trainer = pl.Trainer(max_epochs=1, callbacks=callbacks,
-                         accelerator='gpu', devices=cfg.location.n_gpus,
-                         strategy=DDPStrategy(find_unused_parameters=True, process_group_backend=cfg.location.backend, timeout=timedelta(seconds=7200*2)),
-                         accumulate_grad_batches=4, num_sanity_val_steps=0)
+                         accelerator='gpu',
+                         strategy="ddp",
+                         )
 
     trainer.predict(module, data_module)
 
